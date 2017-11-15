@@ -1,26 +1,119 @@
 import React from 'react';
-import { StyleSheet, Text, View, Image, KeyboardAvoidingView} from 'react-native';
-import LoginForm from './LoginForm';
-import * as firebase from 'firebase'; // 4.6.0
-
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import * as firebase from 'firebase';
+ // 4.6.2
+import { Input } from './components/Input';
+import { Button } from './components/Button';
 
 export default class App extends React.Component {
-  
+  state = {
+    email: '',
+    password: '',
+    authenticating: false,
+    user: null,
+    error: '',
+  }
+
+  componentWillMount() {
+    const firebaseConfig = {
+      apiKey: 'AIzaSyDl_UAMSe8yCzcpq2jtF9mHMOhp0V0-RqU',
+      authDomain: 'medicheck-8ada1.firebaseapp.com',
+    }
+
+      if (!firebase.apps.length) {
+      //Stops error for deplicate App name
+    firebase.initializeApp(firebaseConfig);
+}
+  }
+
+  onPressSignIn() {
+    this.setState({
+      authenticating: true,
+    });
+
+    const { email, password } = this.state;
+
+    firebase.auth().signInWithEmailAndPassword(email, password)
+      .then(user => this.setState({
+        authenticating: false,
+        user,
+        error: '',
+      }))
+      .catch(() => {
+        // Login was not successful
+        firebase.auth().createUserWithEmailAndPassword(email, password)
+          .then(user => this.setState({
+            authenticating: false,
+            user,
+            error: '',
+          }))
+          .catch(() => this.setState({
+            authenticating: false,
+            user: null,
+            error: 'Authentication Failure',
+          }))
+      })
+  }
+
+  onPressLogOut() {
+    firebase.auth().signOut()
+      .then(() => {
+        this.setState({
+          email: '',
+          password: '',
+          authenticating: false,
+          user: null,
+        })
+      }, error => {
+        console.error('Sign Out Error', error);
+      });
+  }
+
+  renderCurrentState() {
+    if (this.state.authenticating) {
+      return (
+        <View style={styles.form}>
+          <ActivityIndicator size='large' />
+        </View>
+      )
+    }
+
+    if (this.state.user !== null) {
+      return (
+        <View style={styles.form}>
+          <Text>Logged In</Text>
+          <Button onPress={() => this.onPressLogOut()}>Log Out</Button>
+        </View>
+      )
+    }
+
+    return (
+      <View style={styles.form}>
+        <Input
+          //placeholder='Enter your email...'
+          label='Email'
+          onChangeText={email => this.setState({ email })}
+          value={this.state.email}
+        />
+        <Input
+          //placeholder='Enter your password...'
+          label='Password'
+          secureTextEntry
+          onChangeText={password => this.setState({ password })}
+          value={this.state.password}
+        />
+        <Button onPress={() => this.onPressSignIn()}>Log In</Button>
+        <Text>{this.state.error}</Text>
+      </View>
+    )
+
+  }
+
   render() {
     return (
-     
-      <KeyboardAvoidingView behavior="padding" style={styles.container}>
-      <View style={styles.logoContainer}>
-       <Image
-          style={styles.logo}
-          source={{uri: 'https://i.pinimg.com/originals/d8/63/12/d86312e1d2bffd7e859366b51877fca1.jpg'}}
-        />
-        <Text style={styles.title}>Welcome to Medicheck!Please enter your details below.</Text>
+      <View style={styles.container}>
+        {this.renderCurrentState()}
       </View>
-      <View style={styles.formContainer}>
-      <LoginForm />
-      </View>
-      </KeyboardAvoidingView>
     );
   }
 }
@@ -28,24 +121,12 @@ export default class App extends React.Component {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#33FF99',
-  },
-  logoContainer:{
+    padding: 20,
     alignItems: 'center',
-    flexGrow: 1,
-    justifyContent: 'center'
+    justifyContent: 'center',
+    flexDirection: 'row'
   },
-  logo: {
-   
-    width:120,
-    height: 100
-  },
-title: {
-  color:'#3386FF',
-  marginTop: 10,
-  width: 160,
-  textAlign: 'center',
-  opacity: 0.9,
- 
-}
+  form: {
+    flex: 1
+  }
 });
